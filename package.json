@@ -1,5 +1,5 @@
 {
-  "name": "monero-ts",
+  "name": "@mainnet-pat/monero-ts",
   "description": "A TypeScript library for using Monero",
   "version": "0.9.7",
   "license": "MIT",
