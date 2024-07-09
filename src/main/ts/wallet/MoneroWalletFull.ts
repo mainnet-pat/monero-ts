@@ -38,7 +38,20 @@ import MoneroWalletListener from "./model/MoneroWalletListener";
 import MoneroMessageSignatureType from "./model/MoneroMessageSignatureType";
 import MoneroMessageSignatureResult from "./model/MoneroMessageSignatureResult";
 import MoneroVersion from "../daemon/model/MoneroVersion";
-import fs from "fs";
+import { promises as fs } from "fs";
+
+const exists = async (fsPromises: any, path: string): Promise<boolean> => {
+  if (fsPromises.exists) {
+    return await fsPromises.exists(path);
+  }
+
+  try {
+    await fsPromises.access(path);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 
 /**
  * Implements a Monero wallet using client-side WebAssembly bindings to monero-project's wallet2 in C++.
@@ -106,9 +119,9 @@ export default class MoneroWalletFull extends MoneroWalletKeys {
     assert(path, "Must provide a path to look for a wallet");
     if (!fs) fs = MoneroWalletFull.getFs();
     if (!fs) throw new MoneroError("Must provide file system to check if wallet exists");
-    const exists = await fs.exists(path + ".keys");
-    LibraryUtils.log(1, "Wallet exists at " + path + ": " + exists);
-    return exists;
+    const result = await exists(fs, path + ".keys");
+    LibraryUtils.log(1, "Wallet exists at " + path + ": " + result);
+    return result;
   }
   
   static async openWallet(config: Partial<MoneroWalletConfig>) {
@@ -137,7 +150,7 @@ export default class MoneroWalletFull extends MoneroWalletKeys {
       if (!fs) throw new MoneroError("Must provide file system to read wallet data from");
       if (!(await this.walletExists(config.getPath(), fs))) throw new MoneroError("Wallet does not exist at path: " + config.getPath());
       config.setKeysData(await fs.readFile(config.getPath() + ".keys"));
-      config.setCacheData(await fs.exists(config.getPath()) ? await fs.readFile(config.getPath()) : "");
+      config.setCacheData(await exists(fs, config.getPath()) ? await fs.readFile(config.getPath()) : "");
     }
 
     // open wallet from data
@@ -1783,7 +1796,7 @@ export default class MoneroWalletFull extends MoneroWalletKeys {
 
       // create destination directory if it doesn't exist
       let walletDir = Path.dirname(path);
-      if (!await wallet.fs.exists(walletDir)) {
+      if (!await exists(wallet.fs, walletDir)) {
         try { await wallet.fs.mkdir(walletDir); }
         catch (err: any) { throw new MoneroError("Destination path " + path + " does not exist and cannot be created: " + err.message); }
       }

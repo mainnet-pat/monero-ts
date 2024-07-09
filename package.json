@@ -52,7 +52,7 @@
     "@babel/preset-env": "^7.22.15",
     "@babel/preset-typescript": "^7.22.15",
     "@babel/register": "^7.22.15",
-    "@mainnet-pat/indexeddb-fs": "^2.1.6",
+    "@mainnet-pat/indexeddb-fs": "^2.1.7",
     "@types/jquery": "^3.5.19",
     "@types/mocha": "^9.1.1",
     "@typescript-eslint/eslint-plugin": "5.53.0",
