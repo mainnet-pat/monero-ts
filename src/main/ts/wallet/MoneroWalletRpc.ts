@@ -351,11 +351,11 @@ export default class MoneroWalletRpc extends MoneroWallet {
   }
 
   /**
-   * Get the locked and unlocked balances in a single request.
+   * Get the total and unlocked balances in a single request.
    * 
    * @param {number} [accountIdx] account index
    * @param {number} [subaddressIdx] subaddress index
-   * @return {Promise<bigint[]>} is the locked and unlocked balances in an array, respectively
+   * @return {Promise<bigint[]>} is the total and unlocked balances in an array, respectively
    */
   async getBalances(accountIdx?: number, subaddressIdx?: number): Promise<bigint[]> {
     if (accountIdx === undefined) {
@@ -497,7 +497,7 @@ export default class MoneroWalletRpc extends MoneroWallet {
   async sync(listenerOrStartHeight?: MoneroWalletListener | number, startHeight?: number): Promise<MoneroSyncResult> {
     assert(!(listenerOrStartHeight instanceof MoneroWalletListener), "Monero Wallet RPC does not support reporting sync progress");
     try {
-      let resp = await this.config.getServer().sendJsonRequest("refresh", {start_height: startHeight}, 0);
+      let resp = await this.config.getServer().sendJsonRequest("refresh", {start_height: startHeight});
       await this.poll();
       return new MoneroSyncResult(resp.result.blocks_fetched, resp.result.received_money);
     } catch (err: any) {
@@ -540,11 +540,11 @@ export default class MoneroWalletRpc extends MoneroWallet {
   }
   
   async rescanSpent(): Promise<void> {
-    await this.config.getServer().sendJsonRequest("rescan_spent", undefined, 0);
+    await this.config.getServer().sendJsonRequest("rescan_spent", undefined);
   }
   
   async rescanBlockchain(): Promise<void> {
-    await this.config.getServer().sendJsonRequest("rescan_blockchain", undefined, 0);
+    await this.config.getServer().sendJsonRequest("rescan_blockchain", undefined);
   }
   
   async getBalance(accountIdx?: number, subaddressIdx?: number): Promise<bigint> {
@@ -1487,9 +1487,11 @@ export default class MoneroWalletRpc extends MoneroWallet {
     
     // start process
     let child_process = await import("child_process");
-    const process = child_process.spawn(config.cmd[0], config.cmd.slice(1), {});
-    process.stdout.setEncoding('utf8');
-    process.stderr.setEncoding('utf8');
+    const childProcess = child_process.spawn(config.cmd[0], config.cmd.slice(1), {
+      env: { ...process.env, LANG: 'en_US.UTF-8' } // scrape output in english
+    });
+    childProcess.stdout.setEncoding('utf8');
+    childProcess.stderr.setEncoding('utf8');
     
     // return promise which resolves after starting monero-wallet-rpc
     let uri;
@@ -1499,7 +1501,7 @@ export default class MoneroWalletRpc extends MoneroWallet {
       return await new Promise(function(resolve, reject) {
       
         // handle stdout
-        process.stdout.on('data', async function(data) {
+        childProcess.stdout.on('data', async function(data) {
           let line = data.toString();
           LibraryUtils.log(2, line);
           output += line + '\n'; // capture output in case of error
@@ -1529,7 +1531,7 @@ export default class MoneroWalletRpc extends MoneroWallet {
             config = config.copy().setServer({uri: uri, username: username, password: password, rejectUnauthorized: config.getServer() ? config.getServer().getRejectUnauthorized() : undefined});
             config.cmd = undefined;
             let wallet = await MoneroWalletRpc.connectToWalletRpc(config);
-            wallet.process = process;
+            wallet.process = childProcess;
             
             // resolve promise with client connected to internal process 
             this.isResolved = true;
@@ -1538,23 +1540,23 @@ export default class MoneroWalletRpc extends MoneroWallet {
         });
         
         // handle stderr
-        process.stderr.on('data', function(data) {
+        childProcess.stderr.on('data', function(data) {
           if (LibraryUtils.getLogLevel() >= 2) console.error(data);
         });
         
         // handle exit
-        process.on("exit", function(code) {
+        childProcess.on("exit", function(code) {
           if (!this.isResolved) reject(new MoneroError("monero-wallet-rpc process terminated with exit code " + code + (output ? ":\n\n" + output : "")));
         });
         
         // handle error
-        process.on("error", function(err) {
+        childProcess.on("error", function(err) {
           if (err.message.indexOf("ENOENT") >= 0) reject(new MoneroError("monero-wallet-rpc does not exist at path '" + config.cmd[0] + "'"));
           if (!this.isResolved) reject(err);
         });
         
         // handle uncaught exception
-        process.on("uncaughtException", function(err, origin) {
+        childProcess.on("uncaughtException", function(err, origin) {
           console.error("Uncaught exception in monero-wallet-rpc process: " + err.message);
           console.error(origin);
           if (!this.isResolved) reject(err);
@@ -2459,7 +2461,7 @@ class WalletPoller {
         }
         
         // take initial snapshot
-        if (that.prevHeight === undefined) {
+        if (that.prevBalances === undefined) {
           that.prevHeight = await that.wallet.getHeight();
           that.prevLockedTxs = await that.wallet.getTxs(new MoneroTxQuery().setIsLocked(true));
           that.prevBalances = await that.wallet.getBalances();
