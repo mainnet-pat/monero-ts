@@ -218,6 +218,7 @@ export default class HttpClient {
       httpAgent: url.startsWith("https") ? undefined : HttpClient.getHttpAgent(),
       httpsAgent: url.startsWith("https") ? HttpClient.getHttpsAgent() : undefined,
       data: body instanceof Uint8Array ? new DataView(body.buffer) : body,
+      transformRequest: req => req,
       transformResponse: res => res,
     }).catch(async (err) => {
       if (err.response.status === 401) {
@@ -264,6 +265,7 @@ export default class HttpClient {
           httpAgent: url.startsWith("https") ? undefined : HttpClient.getHttpAgent(),
           httpsAgent: url.startsWith("https") ? HttpClient.getHttpsAgent() : undefined,
           data: body instanceof Uint8Array ? new DataView(body.buffer) : body,
+          transformRequest: req => req,
           transformResponse: res => res,
         });
 
