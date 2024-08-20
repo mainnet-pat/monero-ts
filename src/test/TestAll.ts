@@ -57,5 +57,3 @@ new TestMoneroConnectionManager().runTests();
 
 // test scratchpad
 require("./Scratchpad");
-
-require("./Axios");
