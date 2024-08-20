@@ -4,7 +4,7 @@ import ThreadPool from "./ThreadPool";
 import PromiseThrottle from "promise-throttle";
 import http from "http";
 import https from "https";
-import axios from "axios";
+import axios, { ResponseType } from "axios";
 
 /**
  * Handle HTTP requests with a uniform interface.
@@ -165,8 +165,20 @@ export default class HttpClient {
     normalizedResponse.statusText = resp.statusText;
 
     normalizedResponse.headers = {...resp.headers};
-    normalizedResponse.body = isBinary ? new Uint8Array(resp.data) : resp.data;
-    if (normalizedResponse.body instanceof ArrayBuffer) normalizedResponse.body = new Uint8Array(normalizedResponse.body);  // handle empty binary request
+
+    if (isBinary) {
+      if (GenUtils.isBrowser()) {
+        // data is Blob
+        normalizedResponse.body = new Uint8Array(await resp.data.arrayBuffer());
+      } else {
+        // data is ArrayBuffer
+        normalizedResponse.body = new Uint8Array(resp.data);
+      }
+    } else {
+      // data is json string
+      normalizedResponse.body = resp.data;
+    }
+
     return normalizedResponse;
   }
 
@@ -185,21 +197,29 @@ export default class HttpClient {
       return token;
     }
 
+    let responseType: ResponseType | undefined = undefined;
+    if (body instanceof Uint8Array) {
+      if (GenUtils.isBrowser()) {
+        responseType = 'blob';
+      } else {
+        responseType = 'arraybuffer';
+      }
+    }
 
-  let count = 0;
-  return axios.request({
-    url: url,
-    method: method,
-    timeout: this.timeout,
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    responseType: body instanceof Uint8Array ? 'arraybuffer' : undefined,
-    httpAgent: url.startsWith("https") ? undefined : HttpClient.getHttpAgent(),
-    httpsAgent: url.startsWith("https") ? HttpClient.getHttpsAgent() : undefined,
-    data: body,
-    transformResponse: res => res,
-  }).catch(async (err) => {
+    let count = 0;
+    return axios.request({
+      url: url,
+      method: method,
+      timeout: this.timeout,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      responseType: responseType,
+      httpAgent: url.startsWith("https") ? undefined : HttpClient.getHttpAgent(),
+      httpsAgent: url.startsWith("https") ? HttpClient.getHttpsAgent() : undefined,
+      data: body instanceof Uint8Array ? body.buffer : body,
+      transformResponse: res => res,
+    }).catch(async (err) => {
       if (err.response.status === 401) {
         let authHeader = err.response.headers['www-authenticate'].replace(/,\sDigest.*/, "");
         if (!authHeader) {
@@ -240,10 +260,10 @@ export default class HttpClient {
             'Authorization': digestAuthHeader,
             'Content-Type': 'application/json'
           },
-          responseType: body instanceof Uint8Array ? 'arraybuffer' : undefined,
+          responseType: responseType,
           httpAgent: url.startsWith("https") ? undefined : HttpClient.getHttpAgent(),
           httpsAgent: url.startsWith("https") ? HttpClient.getHttpsAgent() : undefined,
-          data: body,
+          data: body instanceof Uint8Array ? body.buffer : body,
           transformResponse: res => res,
         });
 
