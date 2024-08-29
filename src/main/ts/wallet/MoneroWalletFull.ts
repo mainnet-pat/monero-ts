@@ -39,7 +39,6 @@ import MoneroMessageSignatureType from "./model/MoneroMessageSignatureType";
 import MoneroMessageSignatureResult from "./model/MoneroMessageSignatureResult";
 import MoneroVersion from "../daemon/model/MoneroVersion";
 import fs from "fs";
-import memfs from "memfs";
 
 /**
  * Implements a Monero wallet using client-side WebAssembly bindings to monero-project's wallet2 in C++.
@@ -300,8 +299,7 @@ export default class MoneroWalletFull extends MoneroWalletKeys {
   }
 
   static getFs() {
-    if (!MoneroWalletFull.FS) MoneroWalletFull.FS = GenUtils.isBrowser() ? memfs.fs.promises : fs.promises;
-    return MoneroWalletFull.FS;
+    return fs.promises;
   }
   
   // ------------ WALLET METHODS SPECIFIC TO WASM IMPLEMENTATION --------------

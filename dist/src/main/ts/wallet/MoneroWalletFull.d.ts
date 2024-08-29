@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import TaskLooper from "../common/TaskLooper";
 import MoneroAccount from "./model/MoneroAccount";
 import MoneroAccountTag from "./model/MoneroAccountTag";
@@ -30,6 +31,7 @@ import MoneroWalletListener from "./model/MoneroWalletListener";
 import MoneroMessageSignatureType from "./model/MoneroMessageSignatureType";
 import MoneroMessageSignatureResult from "./model/MoneroMessageSignatureResult";
 import MoneroVersion from "../daemon/model/MoneroVersion";
+import fs from "fs";
 /**
  * Implements a Monero wallet using client-side WebAssembly bindings to monero-project's wallet2 in C++.
  */
@@ -77,7 +79,7 @@ export default class MoneroWalletFull extends MoneroWalletKeys {
     protected static createWalletFromKeys(config: MoneroWalletConfig): Promise<MoneroWalletFull>;
     protected static createWalletRandom(config: MoneroWalletConfig): Promise<MoneroWalletFull>;
     static getSeedLanguages(): Promise<any>;
-    static getFs(): any;
+    static getFs(): typeof fs.promises;
     /**
      * Get the maximum height of the peers the wallet's daemon is connected to.
      *
